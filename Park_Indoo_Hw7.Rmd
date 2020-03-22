@@ -1,0 +1,85 @@
+---
+title: "Indoo_Park_101_HW7"
+author: "Indoo Park"
+date: "November 15, 2019"
+output: html_document
+---
+
+#Question 1.(8.4.1) Draw an example (of your own invention) of a partition of twodimensional feature space that could result from recursive binary splitting. Your example should contain at least six regions. Draw a decision tree corresponding to this partition. Be sure to label all aspects of your figures, including the regions R1, R2,..., the cutpoints t1, t2,..., and so forth. 
+#Hint: Your result should look something like Figures 8.1 and 8.2
+
+```{r}
+par(xpd = NA)
+plot(NA, NA, type = "n", xlim = c(0,100), ylim = c(0,100), xlab = "X", ylab = "Y")
+# t1: x = 40; (40, 0) (40, 100)
+lines(x = c(40,40), y = c(0,100))
+text(x = 40, y = 108, labels = c("t1"), col = "red")
+# t2: y = 75; (0, 75) (40, 75)
+lines(x = c(0,40), y = c(75,75))
+text(x = -8, y = 75, labels = c("t2"), col = "red")
+# t3: x = 75; (75,0) (75, 100)
+lines(x = c(75,75), y = c(0,100))
+text(x = 75, y = 108, labels = c("t3"), col = "red")
+# t4: x = 20; (20,0) (20, 75)
+lines(x = c(20,20), y = c(0,75))
+text(x = 20, y = 80, labels = c("t4"), col = "red")
+# t5: y=25; (75,25) (100,25)
+lines(x = c(75,100), y = c(25,25))
+text(x = 70, y = 25, labels = c("t5"), col = "red")
+
+text(x = (40+75)/2, y = 50, labels = c("R1"))
+text(x = 20, y = (100+75)/2, labels = c("R2"))
+text(x = (75+100)/2, y = (100+25)/2, labels = c("R3"))
+text(x = (75+100)/2, y = 25/2, labels = c("R4"))
+text(x = 30, y = 75/2, labels = c("R5"))
+text(x = 10, y = 75/2, labels = c("R6"))
+```
+
+#Question 2. (8.4.8. a-c) In the lab, a classification tree was applied to the Carseats data set after converting Sales into a qualitative response variable. Now we will seek to predict Sales using regression trees and related approaches, treating the response as a quantitative variable.
+
+##(a) Split the data set into a training set and a test set.
+```{r}
+library(ISLR)
+set.seed(1234)
+index <- sample(1:nrow(Carseats), nrow(Carseats) / 2)
+train <- Carseats[index, ]
+test <- Carseats[-index, ]
+```
+
+
+##(b) Fit a regression tree to the training set. Plot the tree, and interpret the results. What test MSE do you obtain?
+```{r}
+#install.packages("tree")
+library(tree)
+tree.carseats <- tree(Sales ~ ., data = train)
+summary(tree.carseats)
+plot(tree.carseats)
+text(tree.carseats, pretty = 0)
+pred <- predict(tree.carseats, newdata = test)
+mean((pred - test$Sales)^2)
+
+```
+The test mse is about 5.25
+
+
+
+##(c) Use cross-validation in order to determine the optimal level of tree complexity. Does pruning the tree improve the test MSE? 
+```{r}
+cv_carseats <- cv.tree(tree.carseats)
+plot(cv_carseats$size, cv_carseats$dev, type = "b")
+tree_min <- which.min(cv_carseats$dev)
+points(tree_min, cv_carseats$dev[tree_min], col = "red", cex = 2, pch = 20)
+```
+according to the graph above, the optimal level is 8. 
+
+```{r}
+prune_carseats <- prune.tree(tree.carseats, best = 8)
+plot(prune_carseats)
+text(prune_carseats, pretty = 0)
+
+pred <- predict(prune_carseats, newdata = test)
+mean((pred - test$Sales)^2)
+```
+Since we got the higher mse 6.08, pruning the tree doesn't improve the mse.
+
+

@@ -1,0 +1,173 @@
+---
+title: "Indoo_Park_Hw2"
+author: "Indoo Park"
+date: "October 12, 2019"
+output: html_document
+---
+
+#Question 1. 2.4.7 (skip d)
+
+##a)
+```{r}
+#Euclidean Distance of Observation 1
+eucli_1 <- sqrt((0-0)^2+(3-0)^2+(0-0)^2)
+eucli_1
+#Euclidean Distance of Observation 2
+eucli_2 <- sqrt((2-0)^2+(0-0)^2+(0-0)^2)
+eucli_2
+#Euclidean Distance of Observation 3
+eucli_3 <- sqrt((0-0)^2+(1-0)^2+(3-0)^2)
+eucli_3
+#Euclidean Distance of Observation 4
+eucli_4 <- sqrt((0-0)^2+(1-0)^2+(2-0)^2)
+eucli_4
+#Euclidean Distance of Observation 5
+eucli_5 <- sqrt((-1-0)^2+(0-0)^2+(1-0)^2)
+eucli_5
+#Euclidean Distance of Observation 6
+eucli_6 <- sqrt((1-0)^2+(1-0)^2+(1-0)^2)
+eucli_6
+```
+##b) The nearest point is (-1,0,1) with the euclidean distance 1.41 and since Obs 5 is green with K=1, we predict that the test point will also be Green. 
+
+##c) The nearest points are Obs2 (2,0,0), Obs5 (-1,0,1), and Obs6 (1,1,1). Since Obs5 and Obs6 are Red, we predict the test point (K=3) will be the Red.
+
+#Question 2.In this question, you're going to make plots to show how the bias and variance change as the flexibility increases (see 2.12 for one example. These plots will be a bit more simplistic than 2.12, however.)
+#(a)
+```{r}
+
+set.seed(123)
+f<- function(x) {5+2*x+1.5*x^2+0.4*x^3}
+x<-rep(0:10,5)
+sample_y <- function(x) {f(x) + rnorm(length(x),0,10)}
+y<-sample_y(x)
+
+plot(x,y)
+f_hat = lm(y~poly(x,2,raw=TRUE))
+summary(f_hat)
+```
+
+#(b). 
+```{r}
+set.seed(123)
+x_0 = 3
+MSE_list = rep(0,7)
+bias_list = rep(0,7)
+var_list = rep(0,7)
+for(i in 1:7)
+{
+  f_hat_x_0_list = rep(0,1000)
+  for(j in 1:1000)
+  {
+    y=sample_y(x)
+    f_hat = lm(y~poly(x,i,raw=TRUE))
+    f_hat_x_0 = predict(f_hat,newdata = data.frame(x=x_0))
+    f_hat_x_0_list[j] = f_hat_x_0
+  }
+  MSE_list[i] = mean((f_hat_x_0_list - f(x_0))^2)
+  bias_list[i] = f(x_0) - mean(f_hat_x_0_list)
+  var_list[i] = var(f_hat_x_0_list)
+}
+plot(bias_list,  type = "l", col = "red",main="bias change")
+```
+
+#(c).
+```{r}
+plot(bias_list,  type = "l", col = "red", main = "bias(red) and variance(green)")
+par(new=TRUE)
+plot(var_list,type ="l", col = "green")
+```
+
+#(d).
+```{r}
+bias_list^2
+which.min(bias_list^2)
+```
+The polynomial of order 3 is the true model.
+#(e).
+```{r}
+MSE_list
+which.min(MSE_list)
+```
+the polynomial of order 3 has the min because the order 3 poly is the true model.
+
+#Question3. Suppose we collect data for a group of students in a statistics class with variables $X_1$ = hours studied, $X_2$ = undergrad GPA, and Y =receive an A. We fit a logistic regression and produce estimated coefficient, $\hat{\beta}_0$= -6, $\hat{\beta}_1$ = 0.05, $\hat{\beta}_2$ =1.
+
+#(a).
+$$\frac{e^{-6+0.05X_1+X_2}}{(1+e^{-6+0.05X_1+X_2})} = 0.3775$$
+0.3775
+
+#(b).
+$$\begin{equation}
+\frac{e^{-6+0.05X_1+3.5}}{(1+e^{-6+0.05X_1+3.5})} = 0.5\\
+X_1 = \frac{2.5}{0.05} = 50
+\end{equation}
+$$
+need 50 hours
+
+#Question 4.This question should be answered using the "Weekly" data set, which is part of the "ISLR" package. This data is similar in nature to the "Smarket" data from this chapter's lab, except that it contains 1089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010.
+
+#(a).Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+```{r}
+library("ISLR")
+library("corrplot")
+summary(Weekly)
+attach(Weekly)
+co_re <- cor(Weekly[,-9])
+corrplot(co_re)
+```
+From the correlation plot, we know that there is a very strong correlation between year and volume and almost zero correlation between today and lag variables.
+
+#(b).Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
+
+```{r}
+glm_1 <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Weekly, family = binomial)
+summary(glm_1)
+```
+Only Lag2 is statistically significant since it has the p-value that is less than 0.05.
+
+#(c).Compute the confusion matrix and overall fraction of correct predictions. Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression.
+
+```{r}
+pred <- predict(glm_1, type = "response")
+pred.glm <- rep("Down", length(pred))
+pred.glm[pred > 0.5] <- "Up"
+table(pred.glm, Direction)
+```
+From the table we can get the percentage of correct predictions on the training data is (54+557)/1089 = 56.1065197%. The training error rate is about 43.89% and it seems like overly optimistic. When the market goes up, the model is accurate about (557/(48+557)) = 92% of the time. When the market goes down, the model is correct about 11% of the time (54/(54+430)).
+
+
+
+#(d).Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010).
+
+```{r}
+train <- (Year < 2009)
+New_weekly <- Weekly[!train, ]
+New_Direction <- Direction[!train]
+glm_2 <- glm(Direction ~ Lag2, data = Weekly, family = binomial, subset = train)
+summary(glm_2)
+```
+```{r}
+pred2 <- predict(glm_2, New_weekly, type = "response")
+pred_lm2 <- rep("Down", length(pred2))
+pred_lm2[pred2 > 0.5] <- "Up"
+table(pred_lm2, New_Direction)
+```
+Frome the table we conclude that the predictions on the test data is accurate about (9+56)/104 = 62.5%, and 37.5% for the test error rate. When the market goes up, the model is accurate about (56/(56+5)) = 91.80% of the time. When the market goes down, the model is right about (9/(9+34)) = 20.93% of the time .
+
+#(g).Repeat (d) using KNN with K = 1.
+
+```{r}
+library(class)
+train_X <- as.matrix(Lag2[train])
+test_X <- as.matrix(Lag2[!train])
+train_Direction <- Direction[train]
+set.seed(1)
+pred.knn <- knn(train_X, test_X, train_Direction, k = 1)
+table(pred.knn, New_Direction)
+```
+In this case, the test data is about 50% right and there is 50% of the test error rate. When the market goes up, the model is right about (31/(30+31))= 50.82%. When the market goes down, the model is right about (21/(21+22)) =  48.84% of the time.
+
+#(h).Which of these methods appears to provide the best results on this data?
+We need to compare the error rates. The logistic regression and LDA had the smaller error rates which is the best and followed by QDA and KNN. 
+

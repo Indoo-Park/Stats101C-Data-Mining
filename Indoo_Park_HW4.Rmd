@@ -1,0 +1,230 @@
+---
+title: "HW4"
+author: "Indoo Park (305119912)"
+date: "October 25, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+#Question 1. Use ggplot2 to create a graphic, based on the LArealestate.csv data (see Site Info/Data Not In Textbook), that shows us 3 (or more) variables on the same plot. What questions about the data set does the graphic answer?
+```{r}
+library(ggplot2)
+data <- read.csv("LArealestate.csv")
+head(data)
+attach(data)
+dim(data)
+lm_fit <- lm(price~sqft, data=data)
+summary(lm_fit)
+
+ggplot(data,aes(x=sqft,y=price,color=city, size =beds)) + geom_point() + geom_smooth(method='lm',formula=y~x) 
+```
+
+### My graphic answers that the relationship between the size of the house and the price seems like a linear. In other words, the bigger house is more expansive. Also, my graphic shows that houses where in Beverly Hills are more expansive and bigger than other cities, and the houses where in culver city are the cheapest.
+
+#Question 2. 5.4.8
+## a) Generate a simulated data set as follows:
+```{r}
+set.seed(1)
+y=rnorm(100)
+x=rnorm(100)
+y=x-2*x^2+rnorm(100)
+```
+
+## In this data set, what is $\mathcal{n}$ and what is $\mathcal{p}$? Write out the model used to generate the data in equation form.
+
+### In this case, n is 100 and p is 2. And the model is
+
+$$
+Y = X - 2X^2 + \epsilon
+$$
+
+## b) Create a scatterplot of $\mathbf{X}$ against $\mathbf{Y}$. Comment on what you find.
+
+```{r}
+plot(x,y)
+```
+
+### x and y have a quadratic(curved) relation, not a linear relationship.
+
+## c) Set a random seed, and then compute the LOOCV errors that result from fitting the following four models using least squares:
+
+$i. \ Y = \beta_0 + \beta_1X + \epsilon\\$
+
+```{r}
+library(boot)
+set.seed(1)
+data <- data.frame(x,y)
+fit_glm_1 <- glm(y~x)
+cv.glm(data, fit_glm_1)$delta[1]
+```
+
+$ii.\ Y= \beta_0 + \beta_1X + \beta_2X^2 +\epsilon \\$
+
+```{r}
+fit_glm_2 <- glm(y ~ poly(x, 2))
+cv.glm(data, fit_glm_2)$delta[1]
+```
+
+$iii.\ Y= \beta_0 + \beta_1X + \beta_2X^2 + \beta_3X^3+\epsilon \\$
+
+```{r}
+fit_glm_3 <- glm(y ~ poly(x, 3))
+cv.glm(data, fit_glm_3)$delta[1]
+```
+
+$iv. \ Y= \beta_0 + \beta_1X + \beta_2X^2 + \beta_3X^3+\beta_4X^4+\epsilon$
+
+```{r}
+fit_glm_4 <- glm(y ~ poly(x, 4))
+cv.glm(data, fit_glm_4)$delta[1]
+```
+
+##Note you may find it helpful to use the data.frame() function to create a single data set containing both X and Y.
+
+## d) Repeat (c) using another random seed, and report your results. Are your results the same as what you got in (c)? Why?
+
+```{r}
+set.seed(234)
+fit_glm_1 <- glm(y ~ x)
+cv.glm(data, fit_glm_1)$delta[1]
+
+fit_glm_2 <- glm(y ~ poly(x, 2))
+cv.glm(data, fit_glm_2)$delta[1]
+
+fit_glm_3 <- glm(y ~ poly(x, 3))
+cv.glm(data, fit_glm_3)$delta[1]
+
+fit_glm_4 <- glm(y ~ poly(x, 4))
+cv.glm(data, fit_glm_4)$delta[1]
+
+```
+
+### Yes, the results are exactly same as the result from (C) because LOOCV calculates n folds of a single observation.
+
+
+## e) Which of the models in (c) had the smallest LOOCV error? Is this what you expected? Explain your answer.
+
+### The model "fit_glm_2" has the smallest LOOCV error. Yes, it is the result what we expected, since we knew the quadratic relation between x and y from (b).
+
+## f) Comment on the statistical significance of the coefficient estimates that results from fitting each of the models in (c) using least squares. Do these results agree with the conclusions drawn based on the cross-validation results?
+
+```{r}
+summary(fit_glm_4)
+```
+
+### The p-values of linear and quadratic terms are statistically significants becuase their p-values are smaller than 0.05, and 3rd and 4th degree terms are not significant. This agrees with our CV results which were minimum for the quadratic model.
+
+#Question 3. 6.8.8 (a-d)
+## a) Use the rnorm() function to generate a predictor X of length $\mathcal{n}$ = 100, as well as a noise vector $\epsilon$ of length $\mathcal{n}$ = 100.
+
+```{r}
+set.seed(1)
+x<- rnorm(100)
+eps <- rnorm(100)
+```
+
+## b) Generate a response vector Y of length n = 100 according to the model
+
+$$
+Y = \beta_0 + \beta_1X + \beta_2X^2 + \beta_3X^3 + \epsilon, \\ where \ \ \beta_0,\beta_1,\beta_2,\ and \  \beta_3 \ are \ constants \ of \ your \ choice.
+$$
+
+```{r}
+b_0 <- 1
+b_1 <- 1.5
+b_2 <- -.5
+b_3 <- .25
+y <- b_0 + b_1*x+b_2*x^2+b_3*x^3+eps
+```
+
+## c) Use the regsubsets() function to perform best subset selection in order to choose the best model containing the predictors X, $X^2$,...,$X^{10}$. What is the best model obtained according to $C_p$, BIC, and adjusted $R^2$? Show some plots to provide evidence for your answer, and report the coefficients of the best model obtained. Note you will need to use the data.frame() function to create a single data set containing both X and Y.
+
+```{r}
+library(leaps)
+
+full_data <- data.frame(y = y, x = x)
+fit_full <- regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10), data = full_data, nvmax = 10)
+reg.summary <- summary(fit_full)
+
+par(mfrow = c(2, 2))
+
+plot(reg.summary$cp, xlab = "number of variables", ylab = "C_p", type = "l")
+points(which.min(reg.summary$cp),
+       reg.summary$cp[which.min(reg.summary$cp)], col = "red", cex = 2, pch = 20)
+
+plot(reg.summary$bic, xlab = "number of variables", ylab = "BIC", type = "l")
+points(which.min(reg.summary$bic), reg.summary$bic[which.min(reg.summary$bic)], col = "red", cex = 2, pch = 20)
+
+plot(reg.summary$adjr2, xlab = "number of variables", ylab = "Adjusted R^2", type = "l")
+points(which.max(reg.summary$adjr2), reg.summary$adjr2[which.max(reg.summary$adjr2)], col = "red", cex = 2, pch = 20)
+```
+
+### With $C_p$, we choose the model with 3 variables, with BIC, we pick the model with 3 variables, and with Adjusted $R^2$, we select the 3 variables model. 
+
+```{r}
+#coefficient of best models 
+coef(fit_full, which.max(reg.summary$adjr2))
+```
+
+### The best model with x , $x^2$,$x^7$
+
+## d) Repeat (c), using forward stepwise selection and also using backwards stepwise selection. How does your answer compare to the results in (c)?
+```{r}
+fit_forward <- regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10), data = full_data, nvmax = 10, method = "forward")
+
+forward_summ <- summary(fit_forward)
+
+par(mfrow = c(2, 2))
+
+plot(forward_summ$cp, xlab = "Number of variables", ylab = "C_p", type = "l")
+points(which.min(forward_summ$cp), forward_summ$cp[which.min(forward_summ$cp)], col = "red", cex = 2, pch = 20)
+
+plot(forward_summ$bic, xlab = "Number of variables", ylab = "BIC", type = "l")
+points(which.min(forward_summ$bic), forward_summ$bic[which.min(forward_summ$bic)], col = "red", cex = 2, pch = 20)
+
+plot(forward_summ$adjr2, xlab = "Number of variables", ylab = "Adjusted R^2", type = "l")
+points(which.max(forward_summ$adjr2), forward_summ$adjr2[which.max(forward_summ$adjr2)], col = "red", cex = 2, pch = 20)
+
+mtext("Plots of C_p, BIC and adjusted R^2 for forward stepwise selection", side = 3, line = -2, outer = TRUE)
+```
+
+### With $C_p$, we choose the model with 3 variables, with BIC, we pick the model with 3 variables, and with Adjusted $R^2$, we select the 3 variables model. 
+
+```{r}
+#coefficient of best models
+coef(fit_forward, which.max(forward_summ$adjr2))
+```
+
+### The best model with X , $X^2$, $X^7$ by foward method.
+
+```{r}
+fit_backward <- regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10), data = full_data, nvmax = 10, method = "backward")
+
+backward_summ <- summary(fit_backward)
+
+par(mfrow = c(2, 2))
+
+plot(backward_summ$cp, xlab = "number of variables", ylab = "C_p", type = "l")
+points(which.min(backward_summ$cp), backward_summ$cp[which.min(backward_summ$cp)], col = "red", cex = 2, pch = 20)
+
+plot(backward_summ$bic, xlab = "number of variables", ylab = "BIC", type = "l")
+points(which.min(backward_summ$bic), backward_summ$bic[which.min(backward_summ$bic)], col = "red", cex = 2, pch = 20)
+
+plot(backward_summ$adjr2, xlab = "number of variables", ylab = "Adjusted R^2", type = "l")
+points(which.max(backward_summ$adjr2), backward_summ$adjr2[which.max(backward_summ$adjr2)], col = "red", cex = 2, pch = 20)
+
+mtext("Plots of C_p, BIC and adjusted R^2 for backward stepwise selection", side = 3, line = -2, outer = TRUE)
+```
+
+### With $C_p$, we choose the model with 3 variables, with BIC, we pick the model with 3 variables, and with Adjusted $R^2$, we select the 3 variables model. 
+
+```{r}
+#coefficient of best model
+coef(fit_backward, which.max(backward_summ$adjr2))
+```
+
+### Best model with X ,$X^2$, $X^9$ by backward method.
+
+ 
+

@@ -1,0 +1,137 @@
+---
+title: "Indoo_Park_101C_HW9"
+author: "Indoo Park"
+date: "12/4/2019"
+output: html_document
+---
+
+#Using set.seed(4), create a training data set that is 50% of the observations and use the remaining 50% for the validation set.
+```{r}
+data <- read.csv("bechdel.csv",header = TRUE)[,-1]
+
+#omit category variables
+data[,c(2,3,4,5,10)]<-c()
+data <- na.omit(data)
+
+set.seed(4)
+index <- sample(1:dim(data)[1], dim(data)[1]/2, replace = F)
+train <- data[index,]
+test <- data[-index,]
+```
+
+#Question 1. 1) Our benchmark will be to simply predict “FAIL” for every movie.  Using the validation data, what is our misclassification rate for the benchmark?
+```{r}
+pred <- factor(rep("FAIL",length(test$binary)))
+levels(pred) <- c("FAIL","PASS")
+
+#confusion matrix
+table <- table(pred, test$binary)
+table
+
+#Error rate
+error <- (table[2,1] + table[1,2]) / sum(table)
+error
+```
+
+
+#2) Fit a CART on the training data.  Write  a sentence or two that describes the rules it uses to classify.  (In other words, how can I determine if my movie will pass?).  Plot the tree and label it.  Use the validation set to estimate the misclassification rate. and estimate misclassification rate on the validation set.
+```{r}
+library(tree)
+library(rpart.plot)
+library(dplyr)
+
+fit.cart <- tree(binary~.,data=train) 
+plot(fit.cart)
+text(fit.cart) 
+pred <- predict(fit.cart,newdata = test, type="class")
+
+#confusion matrix 
+table <- table(pred, test$binary)
+table
+
+#Error rate
+error <- (table[2,1] + table[1,2]) / sum(table)
+error
+```
+According to the plot of tree, we can classify it as PASS if the 'budget_2013' < 6.23905e+007, otherwise "FAIL". And the error rate is 0.41375.
+
+# 3) fit a RandomForest. (use set.seed(55).)  use three variables at each split (mtry=3 and 1000 trees.  Which are the most important variables? Which criteria are you using?  What is the estimated misclassification rate based on the validation data? 
+
+```{r}
+library(randomForest)
+set.seed(55)
+fit.rf <- randomForest(binary~.,data=train,importance=T,stry=3, ntree=1000)
+varImpPlot(fit.rf)
+
+pred <- predict(fit.rf,test)
+
+#confusion matrix 
+table <- table(pred, test$binary)
+table
+
+#Error rate
+error <- (table[2,1] + table[1,2]) / sum(table)
+error
+
+```
+According to the varImpPlot of randomforest, we know 'budget_2013' is the most important because it has the highest Mean Decrease Accuracy. And the error rate is 0.43625.
+
+
+# 4)  Try a boosting approach. Use shrinkage=0.01 and interaction.depth=1. What is the estimated misclassifciation rate based on the validation data?
+
+```{r}
+library(gbm)
+
+train1 <- train
+train1$binary <- train1$binary == "PASS"
+
+fit.gbm = gbm(binary~., data = train1, interaction.depth = 1, shrinkage = 0.01, n.trees = 1000, distribution = "gaussian")
+
+pred <- predict(fit.gbm, test ,n.trees = 1000)
+pred[pred>=0.5]="PASS"
+pred[pred<0.5] = "FAIL"
+
+#confusion matrix 
+table <- table(pred, test$binary)
+table
+
+#Error rate
+error <- (table[2,1] + table[1,2]) / sum(table)
+error
+```
+The error rate is 0.40375
+
+
+# 5) Now we’l apply a support vector machine, using a linear discriminant.  See the instructions for the lab in 9.6 for guidance.  Use the “tune” function to find the best value for the cost parameter, setting cost=c(0.001, .01, .1, 1, 5, 10, 100) (as is done in the lab).  Use set.seed(1). Report the cost value for the best model.  Estimate the misclassification rate on the validation data.
+
+```{r}
+library(dplyr)
+library(e1071)
+set.seed(1)
+
+fit.svm <- svm(binary~., data = train, kernel = "linear")
+
+tune.svm <- tune(svm, binary~., data=train, kernel = "linear", ranges = list(cost=c(0.001,0.01,0.1,1,5,10,100)))
+
+#best cost parameter
+tune.svm$best.parameters
+
+pred <- predict(tune.svm$best.model, newdata = test)
+
+#confusion matrix 
+table <- table(pred, test$binary)
+table
+
+#Error rate
+error <- (table[2,1] + table[1,2]) / sum(table)
+error
+```
+With the best cost parameter 0.001, we got the error rate of 0.46375.
+
+
+# 6) Write a sentence or two comparing the models to the benchmark.  For this problem, which approach worked best? (Note that we haven’t tried too hard to fine-tune any of these approaches; quite probably we could do better with some experimentation.) 
+
+By comparing the missclassification rate of each model, the approach of gradient boosing is the best model. 
+It has the lowest error rate of 0.40375.
+
+

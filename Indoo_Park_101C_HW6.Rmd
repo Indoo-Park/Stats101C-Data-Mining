@@ -1,0 +1,174 @@
+---
+title: "Hw6"
+author: "Indoo Park"
+date: "November 8, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+##Question 1. Last time you were asked to use boston.train.csv to predict crime rates using a variety of approaches. This time, use principal components regression.  Use the boston.test.csv dataset to test your models. 
+```{r}
+library(leaps)
+library(glmnet)
+library(pls)
+
+train <- read.csv("boston.train.csv")
+test <- read.csv("boston.test.csv")
+
+fit_pcr <- pcr(crim~., data = train, scale= T, validation = "CV")
+
+
+validationplot(fit_pcr,val.type = "MSEP")
+summary(fit_pcr)
+
+```
+According to the result above, the model with 10 components has the lowest cv score. Therefore, we use 10 as the ncomp 
+
+##a) state the important predictors
+```{r}
+summary(fit_pcr)
+print(fit_pcr[["coefficients"]][,,10])
+```
+"rad", "tax", "lstat" are the most imporant predictors.
+
+##b) state the MSE on the testing data (boston.test.csv)
+```{r}
+pred_pcr <- predict(fit_pcr, test,ncomp =10)
+mse_pcr <- mean((pred_pcr - test$crim)^2)
+print(mse_pcr)
+```
+The PCR method has the mse of 85.5567
+
+##c) Using your results from the last homework, which model now looks best?
+Accroding to the result above, the PCR model has the larger mse than other mses from last homework. Therefore, BIC model still looks the best.
+
+##The two datasets are in the "data” folder under Site Info.
+
+
+
+
+##Question 2. (6.8.1) We perform best subset, forward stepwise, and backward stepwise selection on a single data set. For each approach, we obtain p + 1 models, containing 0, 1, 2,...,p predictors. Explain your answers:
+##(a) Which of the three models with k predictors has the smallest training RSS?
+
+###Best subset selection model with k predictors is the model with the smallest RSS among all the $C_{p}^{k}$ models with k predictors. Forward stepwise selection model with k predictors is the model with the smallest RSS among the p-k models, and backward stepwise model with k predictors is the model with the smalleset RSS among the k models which contains all but one of the predictors in $M_{k+1}$. So the model with k predictors which has the smalleset training RSS is the best subset selection model because it is the one selected among all k predictors models.
+
+##(b) Which of the three models with k predictors has the smallest test RSS ? 
+
+###Best subset selection model may have the smallest test RSS too, however, the other models with other methods might also be a model with smaller test RSS by luck.
+
+##Question 3. (8.4.4) will be delayed.
+
+##Question 4. (6.8.9)(use set.seed(12345)) In this exercise, we will predict the number of applications received using the other variables in the College data set.
+
+##(a) Split the data set into a training set and a test set.
+
+```{r}
+library(ISLR)
+data(College)
+set.seed(12345)
+data = College
+index <- sample(1:dim(data)[1], dim(data)[1]/2)
+
+train <- data[index,]
+test <- data[-index,]
+
+
+
+```
+
+##(b)  Fit a linear model using least squares on the training set, and report the test error obtained.
+```{r}
+fit_lm <- lm(Apps ~., data = train)
+pred_lm <- predict(fit_lm, test)
+mse_lm<-mean((pred_lm-test$Apps)^2)
+print(mse_lm)
+```
+The test error is 1235794
+
+##(c) Fit a ridge regression model on the training set, with λ chosen by cross-validation. Report the test error obtained.
+```{r}
+library("glmnet")
+
+train_mat <- model.matrix(Apps~.,data =train)
+test_mat <- model.matrix(Apps~.,data=test)
+grid <- 10 ^ seq(4,-2,length =100)
+fit_ridge <- glmnet(train_mat, train$Apps, alpha=0,lambda = grid, thresh = 1e-12)
+cv_ridge <- cv.glmnet(train_mat, train$Apps, alpha =0, lambda = grid, thresh = 1e-12)
+bestlam <- cv_ridge$lambda.min
+
+pred_ridge <- predict(fit_ridge, s= bestlam, newx = test_mat)
+
+mse_ridge <- mean((pred_ridge - test$Apps)^2)
+print(mse_ridge)
+```
+The test error is 1278412
+
+##(d) Fit a lasso model on the training set, with λ chosen by crossvalidation. Report the test error obtained, along with the number of non-zero coefficient estimates.
+```{r}
+train_mat <- model.matrix(Apps~.,data =train)
+test_mat <- model.matrix(Apps~.,data=test)
+grid <- 10 ^ seq(4,-2,length =100)
+fit_lasso <- glmnet(train_mat, train$Apps, alpha=1,lambda = grid, thresh = 1e-12)
+cv_lasso <- cv.glmnet(train_mat, train$Apps, alpha =1, lambda = grid, thresh = 1e-12)
+bestlam <- cv_lasso$lambda.min
+
+pred_lasso <- predict(fit_lasso, s= bestlam, newx = test_mat)
+
+mse_lasso <- mean((pred_lasso - test$Apps)^2)
+print(mse_lasso)
+
+predict(fit_lasso, s = bestlam, type = "coefficients")
+```
+the test error is 1285065
+
+##(e) Fit a PCR model on the training set, with M chosen by crossvalidation. Report the test error obtained, along with the value of M selected by cross-validation.
+
+```{r}
+#install.packages("pls")
+library(pls)
+fit_pcr <- pcr(Apps~., data = train, scale= T, validation = "CV")
+
+validationplot(fit_pcr,val.type = "MSEP")
+
+pred_pcr <- predict(fit_pcr, test,ncomp =10)
+mse_pcr<- mean((pred_pcr - test$Apps)^2)
+print(mse_pcr)
+
+```
+The test error is 2709596
+
+##(f) Fit a PLS model on the training set, with M chosen by crossvalidation. Report the test error obtained, along with the value of M selected by cross-validation.
+
+```{r}
+fit_pls <- plsr(Apps~.,data=train, scale = T, validation = "CV")
+
+validationplot(fit_pls, val.type = "MSEP")
+pred_pls <- predict(fit_pls,test,ncomp = 10)
+
+mse_pls <- mean((pred_pls-test$Apps)^2)
+print(mse_pls)
+
+```
+
+##(g) Comment on the results obtained. How accurately can we predict the number of college applications received? Is there much difference among the test errors resulting from these five approaches?
+```{r}
+test_avg <- mean(test$Apps)
+sst <- mean((test_avg - test$Apps)^2)
+r2_lm <- 1- (mse_lm) / sst
+r2_ridge <- 1 - (mse_ridge) / sst
+r2_lasso <- 1 - (mse_lasso) / sst
+r2_pcr <- 1 - (mse_pcr) / sst
+r2_pls <- 1 - (mse_pls) / sst
+
+print(r2_lm)
+print(r2_ridge)
+print(r2_lasso)
+print(r2_pcr)
+print(r2_pls)
+```
+The test $R^2$ for least squares is 0.9280444, the test $R^2$ for ridge is 0.9255629, the test $R^2$ for lasso is 0.9251756, the test $R^2$ for pcr is 0.9181692 and the test $R^2$ for pls is 0.9266761. All models have high accuracy about 92%~93%.
+
+
+
+
+

@@ -1,0 +1,124 @@
+---
+title: "Indoo_Park_101C_ HW8"
+author: "Indoo Park"
+date: "12/4/2019"
+output: html_document
+---
+#Question 1. (chapter 8 problem 3)  Consider the Gini index, classification error, and cross-entropy in a simple classification setting with two classes. Create a single plot that displays each of these quantities as a function of ˆpm1. The xaxis should display ˆpm1, ranging from 0 to 1, and the y-axis should display the value of the Gini index, classification error, and entropy. Hint: In a setting with two classes, pˆm1 = 1 − pˆm2. You could make this plot by hand, but it will be much easier to make in R.
+
+```{r}
+p <- seq(0, 1, 0.001)
+
+index_gini <- 2 * p * (1 - p)
+
+error <- 1 - pmax(p, 1 - p)
+
+entropy <- - (p * log(p) + (1 - p) * log(1 - p))
+
+matplot(p, cbind(index_gini, error, entropy), col = c("blue", "green", "red"))
+
+```
+
+#Question 2.  You may have seen the "births" data in Stats 10.   It consists of a random sample of 2000 births in North Carolina that are collected in order to track health issues in new born babies.  These data are saved in a file better2000births.csv in the SiteInfo section of the CCLE. 
+
+#a) Cut your data into Training and Testing.  Each should have 1000 observations.  use the seed number 1234.   Use a tree (not pruned) to predict whether a baby will be born prematurely.  What is the testing misclassification error?
+
+```{r}
+data <- read.csv("better2000births.csv")
+
+set.seed(1234)
+
+index<- sample(1:dim(data)[1], dim(data)[1]/2, replace=F)
+
+train <- data[index,]
+test <- data[-index,]
+
+summary(data)
+library(tree)
+fit_tree <- tree(Premie ~ ., data = train )
+summary(fit_tree)
+plot(fit_tree)
+text(fit_tree, pretty = 0)
+pred <- predict(fit_tree, newdata = test , type = "class" )
+
+#confusion matrix
+table <- table(pred, test$Premie)
+table
+#misclassification error rate
+error <- (table[2,1] + table[1,2]) / sum(table)
+error
+
+
+
+# There is 7% of testing misclassification error
+```
+
+#b) Use cross-validation to determine if the tree can be improved through pruning.  If so, prune the tree to the appropriate size and provide a plot.
+
+```{r}
+set.seed(1234)
+cv_train <- cv.tree(fit_tree)
+plot(cv_train)
+tree_min <- which.min(cv_train$dev)
+points(tree_min, cv_train$dev[tree_min], col = "red", cex = 2, pch = 20)
+
+#Found that prune at 6th tree has the lowest deviance, it would improve the tree.
+
+
+prune_train<- prune.tree(fit_tree, best = 6)
+plot(prune_train)
+text(prune_train, pretty = 0)
+
+pred <- predict(prune_train, newdata = test, type= 'class')
+
+```
+
+#C. Interpret your pruned tree (or your tree in (a) if you did not need to prune).  In particular, does it tell us whether smoking is a potential cause of premature births?  What factors are associated with premature births?
+No, the facotr 'Habit' doesn't get used in the tree.
+The factors "Weight" and "Visits" are associated with prematrue births.
+
+
+#d. What is the testing misclassification error rate of your pruned tree?  Keep in mind that approximately 9% of all births are premature.  This means that if a doctor simply predict "not premature" ALWAYS, he or she will have only a 9% misclassification error.  Did you do better?
+```{r}
+#confusion matrix
+table <- table(pred, test$Premie)
+table
+#misclassification error rate
+error <- (table[2,1] + table[1,2]) / sum(table)
+error
+
+```
+According to the confusion matrix, I got the 6% of misclassification error which is better than guessing.
+
+
+#Question 2. Boosting for Boston:  Lab 8.3.4 in the book uses the gbm package for gradient boosting in order to predict the outcome of the medv variable (the median value of owner-occupied homes) in the Boston data set.  You can obtain the Boston dataset in the MASS library:  >require(MASS)   >data(Boston)  >View(Boston)  >help(Boston) .                     Use the package xgboost to perform gradient boosting to predict median value of owner-occupied homes for the Boston data set.  Report the mean squared error on your testing data set. To create testing and training data, use the same commands as in the book in Lab 8.3.2 (pg 327 and 328).
+
+```{r}
+library(MASS)
+library(xgboost)
+set.seed(1)
+index <- sample(1:nrow(Boston),nrow(Boston)/2)
+
+train <- Boston[index,]
+test <- Boston[-index,]
+
+dtrain <- xgb.DMatrix(data=as.matrix(train),label = train$medv)
+dtest <- as.matrix(test)
+xg_boston = xgboost(data=dtrain,max_depth=3, eta=0.2,nthread=3,nrounds=40,lambda = 0, objective = "reg:linear")
+
+#dtest <- as.matrix(test[!names(train) %in% c("medv")])
+
+pred <- predict(xg_boston,dtest)
+
+#MSE
+mse <- mean((pred-test$medv)^2)
+mse
+
+#About 6% error rate
+```
+
+
+
+
+
+

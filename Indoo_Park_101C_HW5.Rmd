@@ -1,0 +1,172 @@
+---
+title: "HW5"
+author: "Indoo Park"
+date: "October 31, 2019"
+output: html_document
+---
+
+#Question 1. After reading "50 Years of Data Science" by David Donoho.
+After reading "50 Years of Data Science" by David Donoho, my thought about the differences between data science and statistics became distinct. In generally, data science is the field that includes statistics and machine learning, which includes some techonology for "scaling up" to "big data". A data scientist is a professional who uses scientific methods to liberate and create meaning from raw data, and usually work with big data sets. On the other hand, an applied statistician is a professional who uses methodology to make inferences from data and usually work with smaller data sets than data scientist.In the future, the use of data science would be everywhere regardless of fields and its scientific methodology will be validated empirically.
+
+
+#Question 3. Use the boston.train.csv data to predict the per-capita crime rate for these Boston neighborhoods. This data set consists of a randomly selected 2/3 of the original "Boston" dataset. Use each of these modeling strategies:
+
+#I) Best subsets with Cp (Least Squares)
+```{R}
+library(leaps)
+library(glmnet)
+train <- read.csv("boston.train.csv")
+test <- read.csv("boston.test.csv")
+
+
+summary(train)
+colnames(train)
+attach(train)
+plot(crim~.,data=train)
+```
+```{r}
+models <- regsubsets(crim~.,data=train, nvmax = 13)
+res.sum <- summary(models)
+summary(models)
+
+
+CP <- which.min(res.sum$cp)
+CP
+
+
+model_cp = glm(crim~ zn+indus+nox+rm+dis+rad+black+lstat,data=train)
+summary(model_cp)
+
+
+test_x <- test[,-1]
+test_y <- test[,1]
+
+#stating the MSE on the testing data
+pred = predict(model_cp,test)
+mse=mean((test_y-pred)^2)
+print(mse)
+```
+
+By using model selection with cp, the best model is with 8 predictors, which are "zn","indus","nox","rm","dis","rad","black","lstat".
+
+"lstat","rad","dis" play the biggest roles in the model.
+
+MSE for CP is 82.49914.
+
+#II) Best subsets with BIC (Least Squares)
+```{r}
+BIC <- which.min(res.sum$bic)
+BIC
+
+model_bic <- glm(crim~rad+black+lstat,data=train)
+
+
+#stating the MSE on the testing data
+pred = predict(model_bic,test)
+mse=mean((test_y-pred)^2)
+print(mse)
+```
+By BIC, the best model is with 3 predictors and its best subsets are "rad", "black", "lstat".
+
+MSE for BIC is 82.08559
+
+#III) Best subsets with 10-fold CV (Least Squares)
+```{r}
+k=10
+set.seed(123)
+folds <- sample(rep(1:k),nrow(train),replace=TRUE)
+cv.errors = matrix(NA, 10, 13)
+
+
+predict.regsubsets=function(object, newdata, id){
+  form=as.formula(object$call[[2]])
+  mat=model.matrix(form, newdata)
+  coefi=coef(object, id=id)
+  mat[, names(coefi)]%*%coefi
+}
+
+
+
+for (k in 1:10){
+  best.fit = regsubsets(crim~.,data=train[folds!=k,],nvmax=13,method="forward")
+  for (i in 1:13){
+    pred=predict(best.fit,train[folds==k,], id=i)
+    cv.errors[k,i]=mean((train$crim[folds==k]-pred)^2)
+  }
+}
+
+rmse.cv=sqrt(apply(cv.errors, 2, mean))
+plot(rmse.cv, pch=19, type="b")
+
+model_10fold <- glm(crim~zn+indus+chas+nox+rm+dis+rad+black+lstat, data=train)
+
+#Stating the MSE  on the testing data
+pred = predict(model_10fold,test)
+mse=mean((test_y-pred)^2)
+print(mse)
+```
+By 10-fold cv and comparing its rmse, we know that the best model is with 9 predictors, which are "zn", "indus", "chas", "nox", "rm", "dis", "rad", "black", "lstat". 
+
+MSE for 10-fold cv is 82.43036
+
+#IV) Lasso
+```{r}
+x = model.matrix(crim~.,data=train)
+test_x = model.matrix(crim~.,data=test)
+y = train$crim
+fit.lasso <- glmnet(x,y)
+
+plot(fit.lasso, xvar="lambda",label=TRUE)
+set.seed(123)
+cv.lasso <- cv.glmnet(x,y,alpha=1)
+plot(cv.lasso)
+
+bestlam = cv.lasso$lambda.min
+bestlam
+
+model_lasso = glmnet(x,y,alpha=1,lambda = bestlam)
+coef(model_lasso)
+
+
+#Stating the MSE on the testing data
+pred = predict(model_lasso,test_x)
+mse=mean((test_y-pred)^2)
+print(mse)
+```
+
+The best lasso model uses 9 predictors, which are "zn","indus","chas","nox","rm","dis","rad","black","lstat".
+The predictors, "nox", "chas", "rm", "dis","rad" play the biggest roles in the model.
+
+MSE for lasso is 82.65552.
+
+#V) Ridge
+
+```{r}
+x = model.matrix(crim~.,data=train)
+y = train$crim
+set.seed(123)
+cv.ridge <- cv.glmnet(x,y,alpha=0)
+plot(cv.ridge)
+bestlamb=cv.ridge$lambda.min
+bestlamb
+model_ridge = glmnet(x,y,alpha=0,lambda=bestlamb)
+bestcoeff = predict(model_ridge, s=bestlamb,type="coefficients")
+
+bestcoeff
+sqrt(sum(bestcoeff^2)) #l2 norm
+
+
+#State the MSE on the testing data
+pred = predict(model_ridge,test_x)
+mse=mean((test_y-pred)^2)
+print(mse)
+```
+By ridge method, we know that the feature "chas", "rm", "dis", "rad", "lstat" play biggest roles.
+
+MSE for the ridge is 83.70938
+
+
+#Question 4. Which of the above models would you recommend and why?
+
+I'd like to recommend BIC model because the model has the smallest MSE among the models.
+

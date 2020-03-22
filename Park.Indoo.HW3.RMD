@@ -1,0 +1,214 @@
+---
+title: "Stats101C_Hw3"
+author: "Indoo Park"
+date: "October 18, 2019"
+output: html_document
+---
+4.7.4 4.7.10 e,f,h (for comparing "these methods" in part h, compare LDA, QDA, KNN with K=1 5.4.5 (for part b use the random seed 123. For part c, use seeds 234 for the 2nd split and 345 for the third split.) 5.4.7
+
+#4.7.4
+#(a)
+$$\int_{0.05}^{0.95}10dx + \int_{0}^{0.05}(100x+5)dx + \int_{0.95}^{1}(105-100x)dx = 9 + 0.375 + 0.375 = 9.75$$
+We conclude that the fraction of available observations we will use to make the prediction is 9.75%.
+
+#(b) 
+$$9.75\% \times \ 9.75\% =0.95\% $$
+
+#(c)
+$$0.1^{100} = \frac{1}{10^{100}}=\frac{1}{10^{98}}\% $$
+
+#(d)
+A fraction of available observations near of the test observation decreases exponentially by number of predictors.
+
+#(e)
+$$length = {0.1^{1/p}}$$
+Therefore, for p = 1 we get length of 2 for p=2, we get length of $0.1^{1/2}$ and for p = 100, we get length of $0.1^{1/100}$. Hence, as p increases, the length of the cube increases.
+
+
+#4.7.10
+# (e)
+```{r}
+library(ISLR)
+attach(Weekly)
+library(MASS)
+
+#set train and test data
+train <- Weekly[(Year < 2009),]
+test <- Weekly[!(Year <2009),]
+
+#built a lda model with train data
+m1_lda <- lda(Direction ~ Lag2, data = train)
+m1_lda
+
+#predicted test value with m1_lda model
+pred_lda <- predict(m1_lda,test)
+
+#confusion matrix
+table(pred_lda$class,test$Direction)
+```
+From the confusion matrix, we know that the percentage of correct predictions on the test data is $\frac{9+56}{104} = 62.5\%$, and 37.5% for the error rate. When the market goes up, the model is correct $\frac{56}{56+5}=91.8\%$ of the time, and when the market goes down, the model is correct $\frac{9}{9+34}=20.93\%$
+
+# (f)
+```{r}
+#built qda model
+m2_qda <- qda(Direction ~ Lag2, data= train)
+m2_qda
+
+#predicted test
+pred_qda <- predict(m2_qda,test)
+table(pred_qda$class, test$Direction)
+```
+the percentage of corrct predictions on the test data  is $\frac{0+61}{43+61}=58.65\%$ and 41.35% for the error rate. When the market goes up, $\frac{61}{0+61}= 100\%$ correct, and when the market goes down $\frac{0}{0+43}=0\%$. From this result, the QDA model correct only 58.65% even though the model selects "Up" all time.
+
+# (h)for comparing "these methods" in part h, compare LDA, QDA, KNN with K=1
+```{r}
+#implement knn with k =1
+
+library(class)
+dir<- as.factor(Direction)
+trainX<- as.matrix(train[,3])
+testX <- as.matrix(test[,3])
+traincl <- factor(train[,9])
+testcl <- factor(test[,9])
+pr<-knn(trainX,testX,cl=traincl,k=1)
+
+#confusion matrix
+table(pr,testcl)
+```
+The knn method with k=1 has $\frac{21+31}{104} = 50\%$ of accuracy, and 50% for the error rate. 
+
+By comparing the error rates of LDA,QDA,KNN, we know that LDA has the smallest error rate. Therefore, we conclude that LDA is the best and followed by QDA, KNN. 
+
+#5.4.5
+#(a)Fit a logistic regression model that uses "income" and "balance" to predict "default".
+```{r}
+library(ISLR)
+attach(Default)
+
+logistic_model <- glm(default ~ income + balance, data = Default, family = "binomial")
+summary(logistic_model)
+```
+
+#(b)Using the validation set approach, estimate the test error of this model. In order to do this, you must perform the following steps:
+#i. Split the sample set into a training set and a validation set.
+#ii. Fit a multiple logistic regression model using only the training observations.
+#iii. Obtain a prediction of default status for each individual in the validation set by computing the posterior probability of default for that individual, and classifying the individual to the default category if the posterior probability is greater than 0.5.
+#iv. Compute the validation set error, which is the fraction of the observations in the validation set that are misclassified.
+```{r}
+#i
+set.seed(123)
+train <- sample(dim(Default)[1], dim(Default)[1] / 2)
+#ii
+logistic <- glm(default ~ income + balance, data = Default, family = "binomial", subset = train)
+#iii
+pred <- predict(logistic, newdata = Default[-train, ], type = "response")
+pred.glm <- rep("No", length(pred))
+pred.glm[pred > 0.5] <- "Yes"
+#iv
+#error rate
+mean(pred.glm != Default[-train, ]$default)
+```
+About 2.86% test error rate with the validation set approach.
+
+#(c)Repeat the process in (b) three times, using three different splits of the observations into a training set and a validation set. Comment on the results obtained.
+```{r}
+#i
+set.seed(123)
+train <- sample(dim(Default)[1], dim(Default)[1] / 2)
+#ii
+logistic <- glm(default ~ income + balance, data = Default, family = "binomial", subset = train)
+#iii
+pred <- predict(logistic, newdata = Default[-train, ], type = "response")
+pred.glm <- rep("No", length(pred))
+pred.glm[pred > 0.5] <- "Yes"
+#iv
+#error rate
+mean(pred.glm != Default[-train, ]$default)
+```
+```{r}
+#i
+set.seed(234)
+train <- sample(dim(Default)[1], dim(Default)[1] / 2)
+#ii
+logistic <- glm(default ~ income + balance, data = Default, family = "binomial", subset = train)
+#iii
+pred <- predict(logistic, newdata = Default[-train, ], type = "response")
+pred.glm <- rep("No", length(pred))
+pred.glm[pred > 0.5] <- "Yes"
+#iv
+#error rate
+mean(pred.glm != Default[-train, ]$default)
+```
+
+```{r}
+#i
+set.seed(345)
+train <- sample(dim(Default)[1], dim(Default)[1] / 2)
+#ii
+logistic <- glm(default ~ income + balance, data = Default, family = "binomial", subset = train)
+#iii
+pred <- predict(logistic, newdata = Default[-train, ], type = "response")
+pred.glm <- rep("No", length(pred))
+pred.glm[pred > 0.5] <- "Yes"
+#iv
+#error rate
+mean(pred.glm != Default[-train, ]$default)
+```
+The test error rate of the validation estimate can be different depending which observations are in train set and validation set.
+
+#(d)Now consider a logistic regression model that predicts the probability of "default" using "income", "balance", and a dummy variable for "student". Estimate the test error for this model using the validation set approach. Comment on whether or not including a dummy variable for "student" leads to a reduction in the test error rate.
+
+```{r}
+train <- sample(dim(Default)[1], dim(Default)[1] / 2)
+fit.glm <- glm(default ~ income + balance + student, data = Default, family = "binomial", subset = train)
+pred.glm <- rep("No", length(pred))
+probs <- predict(fit.glm, newdata = Default[-train, ], type = "response")
+pred.glm[probs > 0.5] <- "Yes"
+mean(pred.glm != Default[-train, ]$default)
+```
+
+it doesn't seems like that the "student" variable reduce the error rate.
+
+#5.4.7 In Sections 5.3.2 and 5.3.3, we saw that the cv.glm() function can be used in order to compute the LOOCV test error estimate. Alternatively, one could compute those quantities using just the glm() and predict.glm() functions, and a for loop. You will now take this approach in order to compute the LOOCV error for a simple logistic regression model on the Weekly data set. Recall that in the context of classification problems, the LOOCV error is given in (5.4).
+
+#(a) Fit a logistic regression model that predicts "Direction" using "Lag1" and "Lag2".
+```{r}
+set.seed(123)
+attach(Weekly)
+fit.glm <- glm(Direction ~ Lag1 + Lag2, data = Weekly, family = "binomial")
+summary(fit.glm)
+```
+
+#(b)Fit a logistic regression model that predicts Direction using Lag1 and Lag2 using all but the first observation.
+```{r}
+fit.glm_1 <- glm(Direction ~ Lag1 + Lag2, data = Weekly[-1, ], family = "binomial")
+summary(fit.glm_1)
+```
+#(c) Use the model from (b) to predict the direction of the first observation. You can do this by predicting that the first observation will go up if P(Direction="Up"|Lag1, Lag2) > 0.5. Was this observation correctly classified?
+```{r}
+predict.glm(fit.glm_1, Weekly[1, ], type = "response") > 0.5
+```
+#(d)Write a for loop from i = 1 to i = n, where n is the number of observations in the data set, that performs each of the following steps:
+#i. Fit a logistic regression model using all but the ith observation to predict Direction using Lag1 and Lag2.
+#ii. Compute the posterior probability of the market moving up for the ith observation.
+#iii. Use the posterior probability for the ith observation in order to predict whether or not the market moves up.
+#iv. Determine whether or not an error was made in predicting the direction for the ith observation. If an error was made, then indicate this as a 1, and otherwise indicate it as a 0
+```{r}
+
+error <- rep(0, dim(Weekly)[1])
+for (i in 1:dim(Weekly)[1]) {
+    fit.glm <- glm(Direction ~ Lag1 + Lag2, data = Weekly[-i, ],  family = "binomial")
+    
+    pred.up <- predict.glm(fit.glm, Weekly[i, ], type = "response") > 0.5
+    true.up <- Weekly[i, ]$Direction == "Up"
+    
+    if (pred.up != true.up)
+        error[i] <- 1
+}
+error
+```
+#(e)Take the average of the n numbers obtained in (d)iv in order to obtain the LOOCV estimate for the test error. Comment on the results.
+```{r}
+mean(error)
+```
+The error rate of LOOCV method is 45% 

@@ -1,0 +1,137 @@
+---
+title: "HW1"
+author: "Indoo Park"
+date: "October 4, 2019"
+output: html_document
+---
+
+```{r}
+#install.packages("fivethirtyeight")
+library(fivethirtyeight)
+attach(bechdel)
+names(bechdel)
+
+```
+
+###Question 1.
+#### (a) Write four questions that could be answered with these data.  Two of your questions should be questions that require estimating the parameters, and two should be prediction questions.  Indicate which question is a 'parameter' and which is a 'prediction' question. (The Statistical Learning textbook classifies these as 'inference' vs. 'prediction' questions.)
+
+####'Parameter' Question 
+#### Question1 
+#### What is the median budget of films that passed the test in 2013?
+#### Question2
+#### What is the average domgross of the films that failed the test in 2012?
+
+####'Prediction' Question
+#### Question 1. If there is a movie with budget 5500000 and intgross of 26377704 in 2013, would it pass the test ?
+
+#### Question 2. Would a movie with domgross lower than $5000000 pass the test, and what's the probability of passing?
+
+#### (b) Answer for 'Parameter' question #2
+```{r}
+#### What is the average domgross of the films that failed the test in 2012?
+data  <- bechdel
+#check the NA in data
+index <- (is.na(data$domgross) == FALSE)
+data <- data[index,]
+index2 <- (data$year == 2012)
+data<-data[index2,]
+index3 <- (data$binary == "FAIL")
+data <- data[index3,]
+
+#answer
+mean(data$domgross)
+```
+#### 81427616 is the average domestic gross of the films that failed the test in 2012. I found some NAs in the data first and ignored them. after than I subsetted data with using of logical index.
+
+###Question 2.
+####(a).
+```{r}
+hw1 <- read.csv("hw1.csv")
+p1 <- lm(y~x, data= hw1)
+p2 <- lm(y~x + I(x^2), data= hw1 )
+p3 <- lm(y~x + I(x^2) + I(x^3), data= hw1 )
+p4 <- lm(y~x + I(x^2) + I(x^3) + I(x^4), data= hw1 )
+p5 <- lm(y~x +I(x^2) + I(x^3) + I(x^4) + I(x^5), data= hw1)
+anova(p1)
+anova(p2)
+anova(p3)
+anova(p4)
+anova(p5)
+
+87201/9
+68374/9
+61465/9
+18310/9
+18288/9
+```
+#### MSE = SSE / # obs, In this case # observation is 9 for every order and I used sum of squared of residuals as SSE from the anova table.
+#### Here is my answer table below
+```{r echo=FALSE}
+#MSE = SSE / # of obs , (In this case # obs is 9)
+number <- matrix(c(1,9689,2,7597,3,6829,4,2034,5,2032),ncol =2, byrow = TRUE)
+#List the MSE_training for each Poly order
+df.number<-data.frame(number)
+colnames(df.number) <- c("Poly Order","training_MSE")
+df.number
+
+```
+####(b). I would choose the fifth polynomial as the best model because it has the lowest MSE 2032.
+
+####(c).
+```{r}
+set.seed(456)
+x=seq(0,4,by=.5)
+y=500+200*x + rnorm(length(x),0,100)
+
+p_y1 <- predict(p1, data.frame(x))
+p_y2 <- predict(p2, data.frame(x))
+p_y3 <- predict(p3, data.frame(x))
+p_y4 <- predict(p4, data.frame(x))
+p_y5 <- predict(p5, data.frame(x))
+
+MSE1 <- (sum((p_y1 - y)^2)) / 9
+MSE2 <- (sum((p_y2 - y)^2)) / 9
+MSE3 <- (sum((p_y3 - y)^2)) / 9
+MSE4 <- (sum((p_y4 - y)^2)) / 9
+MSE5 <- (sum((p_y5 - y)^2)) / 9
+```
+
+#### Here is my answer table below
+```{r echo=FALSE}
+mse.test<-data.frame(matrix(c(1,2,3,4,5,MSE1,MSE2,MSE3,MSE4,MSE5),ncol=2, byrow=FALSE))
+colnames(mse.test) <- c("Poly Order","MSE_test")
+
+mse.test
+```
+
+####(d)  Write a sentence or two describing how the MSE_testing and MSE_training compare. Now that you know the true model (y = 500_200*x), do the MSEs make sense?
+
+####MSE_testing values are higher than MSE_training values. It seems like that testing data could overfit. The true model for the testing data is the first order polynomial model, which is a linear model and it makes sense because the first order poly model has the lowest MSE.
+
+###Question 3. Explain whether each scenario is a classification or regression problem, and indicate whether we are most interested in inference or prediction. Finally, provide n and p.
+
+####(a) We collect a set of data on the top 500 firms in the US. For each firm we record profit, number of employees, industry and the CEO salary. We are interested in understanding which factors affect CEO salary.
+
+#### - (a) is a regression problem and they are interested in inference since they want to know the relationship between factors and CEO salary . n is 500 and p is 3.
+
+####(b) We are considering launching a new product and wish to know whether it will be a success or a failure. We collect data on 20 similar products that were previously launched. For each product we have recorded whether it was a success or failure, price charged for the product, marketing budget, competition price, and ten other variables.
+
+#### - (b) is a classification problem and they are most interested in prediction. n is 20 and p is 13.
+
+####(c) We are interesting in predicting the % change in the US dollar in relation to the weekly changes in the world stock markets. Hence we collect weekly data for all of 2012. For each week we record the % change in the dollar, the % change in the US market, the % change in the British market, and the % change in the German market.
+
+#### - (c) is a regression problem and they are interested in prediction. n is 52 and p is 3.
+
+###Question4. The Least Squares regression estimates are examples of BLUE.  Best Linear Unbiased Estimators.(a) Review the Gauss-Markov theorem (the statement, not the proof) and explain under which conditions this desirable quality of unbiasedness is achieved. (b) Give an example of a situation in which the GM theorem is NOT satisfied.
+
+####(a)
+####Four conditions of quality of unbiasedness:
+####1. The mean of the errors is zero.
+####2. The variance of the errors is finite and constant.
+####3. Distinct error terms are uncorrelated.
+####4. The mean of the response, E(Yi), at each value of the predictor, xi is a linear function of the xi.
+
+####(b)
+####If the variance of the errors is not a constant and the validitiy of quality of unbiasedness is not satisfied, GM is not satisfied.
+
